@@ -25,10 +25,4 @@ public class ExtentReporter {
 
         return extentReport;
     }
-
-    public static void getScreenshot(WebDriver driver) throws IOException {
-        File source = ((TakesScreenshot) driver).getScreenshotAs(OutputType.FILE);
-        String screenshotFilePath = System.getProperty("user.dir") + "/failurescreenshots/screenshot.png";
-        FileUtils.copyFile(source, new File(screenshotFilePath));
-    }
 }

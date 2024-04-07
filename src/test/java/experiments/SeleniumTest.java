@@ -1,30 +1,22 @@
-package login;
+package experiments;
 
-import base.BaseTest;
+import org.apache.commons.io.FileUtils;
 import org.apache.poi.ss.usermodel.Cell;
 import org.apache.poi.xssf.usermodel.XSSFCell;
 import org.apache.poi.xssf.usermodel.XSSFRow;
 import org.apache.poi.xssf.usermodel.XSSFSheet;
 import org.apache.poi.xssf.usermodel.XSSFWorkbook;
-import org.openqa.selenium.Cookie;
-import org.openqa.selenium.ElementNotInteractableException;
-import org.openqa.selenium.WebDriver;
-import org.openqa.selenium.WindowType;
+import org.openqa.selenium.*;
+import org.openqa.selenium.chrome.ChromeDriver;
+import org.openqa.selenium.firefox.FirefoxDriver;
 import org.openqa.selenium.firefox.FirefoxOptions;
-import org.openqa.selenium.interactions.Actions;
+import org.openqa.selenium.support.locators.RelativeLocator;
 import org.openqa.selenium.support.ui.FluentWait;
 import org.openqa.selenium.support.ui.Wait;
 import org.openqa.selenium.support.ui.WebDriverWait;
 import org.testng.Assert;
-import org.testng.SkipException;
-import org.testng.annotations.AfterMethod;
 import org.testng.annotations.DataProvider;
 import org.testng.annotations.Test;
-import page.AccountPage;
-import page.HomePage;
-import page.LoginPage;
-import util.DataUtil;
-import util.MyXLSReader;
 
 import java.io.File;
 import java.io.FileInputStream;
@@ -33,59 +25,52 @@ import java.net.HttpURLConnection;
 import java.net.MalformedURLException;
 import java.net.URL;
 import java.time.Duration;
-import java.util.Arrays;
-import java.util.HashMap;
-import java.util.LinkedHashSet;
 import java.util.Set;
 
-public class LoginTest extends BaseTest {
+public class SeleniumTest {
     WebDriver driver;
-    MyXLSReader excelReader;
+    public void syntaxTest() {
+        driver = new ChromeDriver();
 
-    @Test(dataProvider = "dataSupplier")
-    //public void testLogin(String runmode, String browser, String username, String password, String expectedResult) {
-    public void testLogin(HashMap<String, String> hashMap) {
-        if(!DataUtil.isRunnable(excelReader, "LoginTest", "Testcases") || hashMap.get("Runmode").equals("N"))
-            throw new SkipException("Runmode is set to N, hence not executed");
+        driver.switchTo().newWindow(WindowType.TAB);
+        driver.manage().addCookie(new Cookie("name", "value"));
+        driver.manage().deleteCookieNamed("name");
 
-        //driver = openBrowserAndApplication(browser);
-        driver = openBrowserAndApplication(hashMap.get("Browser"));
-        String window = driver.getWindowHandle();
-        String tabText = driver.getTitle();
-        System.out.println(window);
-        System.out.println(tabText);
-
-        HomePage homePage = new HomePage(driver);
-        homePage.clickAccountDropdown();
-        homePage.selectLoginOption();
-
-        LoginPage loginPage = new LoginPage(driver);
-        //loginPage.inputEmail(username);
-        loginPage.inputEmail(hashMap.get("Username"));
-
-        //loginPage.inputPassword(password);
-        loginPage.inputPassword(hashMap.get("Password"));
-
-        loginPage.clickLoginButton();
-        /*driver.switchTo().newWindow(WindowType.TAB);
-        driver.manage().addCookie(new Cookie());
-        driver.manage().deleteCookieNamed();*/
-
-        if(hashMap.get("ExpectedResult").equals("Failure"))
-        //if(expectedResult.equals("Failure"))
-            Assert.assertEquals(loginPage.getInvalidLoginMessage(), "Warning: No match for E-Mail Address and/or Password.");
-        else if(hashMap.get("ExpectedResult").equals("Success")) {
-        //else if(expectedResult.equals("Success")) {
-            AccountPage accountPage = new AccountPage(driver);
-            Assert.assertTrue(accountPage.presenceOfEditAccountMessage());
-        }
         FirefoxOptions op = new FirefoxOptions();
         op.addArguments("--headless=true");
+        driver = new FirefoxDriver(op);
+
         Wait<WebDriver> wait1 = new WebDriverWait(driver, Duration.ofSeconds(10));
         Wait<WebDriver> wait2 = new FluentWait<>(driver)
                 .withTimeout(Duration.ofSeconds(10))
                 .pollingEvery(Duration.ofSeconds(2))
                 .ignoring(ElementNotInteractableException.class);
+
+        driver.findElement(RelativeLocator.with(By.tagName("input")).above(By.id("tests")));
+        driver.findElement(RelativeLocator.with(By.tagName("input")).below(By.id("tests")));
+        driver.findElement(RelativeLocator.with(By.tagName("input")).toLeftOf(By.id("tests")));
+        driver.findElement(RelativeLocator.with(By.tagName("input")).toRightOf(By.id("tests")));
+
+        Set<String> windows = driver.getWindowHandles();
+        String[] windowsArr = new String[windows.size()];
+        int index = 0;
+
+        for(String window : windows) {
+            windowsArr[index] = window;
+            index++;
+        }
+
+        driver.switchTo().window(windowsArr[2]);
+        driver.switchTo().window(windowsArr[4]);
+        driver.switchTo().window(windowsArr[1]);
+        driver.close();
+
+    }
+
+    public static void getScreenshot(WebDriver driver) throws IOException {
+        File source = ((TakesScreenshot) driver).getScreenshotAs(OutputType.FILE);
+        String screenshotFilePath = System.getProperty("user.dir") + "/failurescreenshots/screenshot.png";
+        FileUtils.copyFile(source, new File(screenshotFilePath));
     }
 
 //    public void multipart() {
@@ -110,34 +95,16 @@ public class LoginTest extends BaseTest {
             connection.connect();
 
             if(connection.getResponseCode() == 200)
-                System.out.println(url + ": " + connection.getResponseMessage());
-
+                Assert.assertEquals(connection.getResponseMessage(), "OK");
             if(connection.getResponseCode() == 404)
-                System.out.println(url + ": " + connection.getResponseMessage());
-        } catch (MalformedURLException e) {
-            throw new RuntimeException(e);
-        } catch (IOException e) {
+                Assert.assertEquals(connection.getResponseMessage(), "Not Found");
+        }
+        catch (MalformedURLException e) {
             throw new RuntimeException(e);
         }
-    }
-
-    @DataProvider
-    public Object[][] dataSupplier() {
-        Object[][] excelData = null;
-
-        try {
-            excelReader = new MyXLSReader("src/test/resources/TestExcel.xlsx");
-            excelData = DataUtil.getTestData(excelReader, "LoginTest", "Data");
-        } catch (Exception e) {
+        catch (IOException e) {
             throw new RuntimeException(e);
         }
-
-        return excelData;
-    }
-
-    @AfterMethod
-    public void tearDown() {
-        driver.quit();
     }
 
     @DataProvider
